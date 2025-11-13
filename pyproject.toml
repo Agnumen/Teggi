@@ -1,0 +1,19 @@
+[project]
+name = "teggi"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiogram>=3.22.0",
+    "aiogram-calendar>=0.6.0",
+    "alembic>=1.17.1",
+    "apscheduler>=3.11.1",
+    "asyncpg>=0.30.0",
+    "faker>=38.0.0",
+    "psycopg2-binary>=2.9.11",
+    "pydantic>=2.11.10",
+    "pydantic-settings>=2.12.0",
+    "redis>=7.0.1",
+    "sqlalchemy>=2.0.44",
+]

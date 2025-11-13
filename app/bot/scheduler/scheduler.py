@@ -1,0 +1,110 @@
+import logging
+from datetime import datetime, timedelta, date
+
+from aiogram import Bot
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from app.bot.keyboards.user import get_evening_checkin_keyboard, get_day_checkin_keyboard
+from app.bot.templates import TIPS
+
+from app.infrastructure.database import Database
+logger = logging.getLogger(__name__)
+
+async def send_morning_overview(bot: Bot, db: Database):
+    user_ids = await db.user.get_all_user_ids()
+    for user_id in user_ids:
+        text = await get_overview_for_user(user_id)
+        await bot.send_message(user_id, text, parse_mode="HTML")
+
+async def send_day_checkin(bot: Bot, db: Database):
+    user_ids = await db.user.get_all_user_ids()
+    for user_id in user_ids:
+        await bot.send_message(user_id, "Как ты сейчас? Какая обстановка вокруг?", reply_markup=get_day_checkin_keyboard())
+
+
+async def send_evening_checkin(bot: Bot, db: Database):
+    user_ids = await db.user.get_all_user_ids()
+    for user_id in user_ids:
+        await bot.send_message(user_id, "Как прошёл день в целом?", reply_markup=get_evening_checkin_keyboard())
+
+async def send_reminder(bot: Bot, user_id: int, event_name: str, tag: str, db: Database):
+    await db.user.get_or_create_user(user_id)
+    
+    if not await db.user.get_notifications_status_by_id(user_id):
+        return # Пользователь отключил уведомления
+    
+    tip = TIPS.get(tag,"Не забудь подготовиться!")
+    await bot.send_message(user_id, f"🔔 Через 15 минут — **{event_name}** ({tag})\n\n_{tip}_", parse_mode="Markdown")
+
+async def setup_user_reminders(user_id: int, bot: Bot, scheduler: AsyncIOScheduler, db: Database, event_date: date = date.today()):
+    """Устанавливает все напоминания для пользователя на день."""
+    # Сначала удаляем старые напоминания, чтобы избежать дублей
+    for job in scheduler.get_jobs():
+        if job.id.startswith(f"reminder_{user_id}_{event_date.strftime('%Y%m%d')}_"):
+            job.remove()
+
+    events = await db.event.get_user_events(user_id, event_date=event_date)
+    for event in events:
+        try:
+            hour, minute = map(int, event.start_time.split(':'))
+            # Напоминание за 15 минут
+            # reminder_time = datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0) - timedelta(minutes=15)
+            reminder_time = datetime.combine(event_date, event.start_time) - timedelta(minutes=15)
+            
+            # Если время уже прошло, не ставим напоминание на сегодня
+            if reminder_time < datetime.now():
+                continue
+            
+            job_id = f"reminder_{user_id}_{event_date.strftime('%Y%m%d')}_{event.id}"
+            scheduler.add_job(
+                send_reminder,
+                trigger="date",
+                run_date=reminder_time,
+                kwargs={"bot": bot, "user_id": user_id, "event_name": event.name, "tag": event.tag},
+                id=job_id
+            )
+            logger.debug(f"SCHEDULER: Added reminder for {user_id} at {reminder_time.strftime('%H:%M')} for event '{event.name}'")
+        except Exception as e:
+            logger.error(f"Error scheduling reminder for {user_id} on event {event.name}: {e}")
+
+
+async def get_overview_for_user(user_id: int, db: Database, event_date: date = date.today()) -> bool | str:
+    """Формирует и отправляет обзор дня конкретному пользователю."""
+    events = await db.event.get_user_events(user_id, event_date)
+    if not events:
+        return False
+    date_str = "сегодня" if event_date == date.today() else event_date.strftime("%d.%m.%Y")
+    overview_text = f"Вот твой ритм на {date_str} 👇\n\n"
+    for event in events:
+        overview_text += f"<b>{event.start_time.strftime('%H:%M')}–{event.end_time.strftime('%H:%M')}</b> — {event.name} ({event.tag})\n"
+    overview_text += "\n\nХорошего дня!"
+    try:
+        return overview_text
+    except Exception as e:
+        logger.error(f"Failed to send overview to {user_id}: {e}")
+        return False
+
+def setup_scheduler(bot: Bot, session_pool: async_sessionmaker[AsyncSession]):
+    """Настраивает и запускает все запланированные задачи."""
+    scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
+    
+    async def scheduled_morning_overview():
+        async with session_pool() as session:
+            db = Database(session=session)
+            await send_morning_overview(bot, db)
+    
+    async def scheduled_day_checkin():
+        async with session_pool() as session:
+            db = Database(session=session)
+            await send_day_checkin(bot, db)
+    
+    async def scheduled_evening_checkin():
+        async with session_pool() as session:
+            db = Database(session=session)
+            await send_evening_checkin(bot, db)
+    
+    scheduler.add_job(scheduled_morning_overview, "cron", hour=7, minute=30)
+    scheduler.add_job(scheduled_day_checkin, "cron", hour=13, minute=0)
+    scheduler.add_job(scheduled_evening_checkin, "cron", hour=20, minute=30)
+    
+    return scheduler

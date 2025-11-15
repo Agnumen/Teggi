@@ -52,7 +52,7 @@ async def main(config: Settings):
     # Инициализируем движок и сессию для работы с базой данных
     DATABASE_URL = config.get_db_url()
 
-    engine = create_async_engine(url=DATABASE_URL, echo=True)
+    engine = create_async_engine(url=DATABASE_URL)#, echo=True)
     async_session_maker = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
     
     # Получаем словарь с переводами
@@ -96,7 +96,7 @@ async def main(config: Settings):
     logger.info("Including middlewares...")
     dp.update.middleware(DatabaseMiddleware(async_session_maker))
     # dp.update.middleware(ShadowBanMiddleware())
-    # dp.update.middleware(ActivityCounterMiddleware())
+    dp.update.middleware(ActivityCounterMiddleware())
     # dp.update.middleware(LangSettingsMiddleware())
     # dp.update.middleware(TranslatorMiddleware())
     

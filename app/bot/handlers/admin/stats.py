@@ -21,3 +21,13 @@ async def cmd_stats(message: Message, db: Database):
 - **Среднее кол-во чек-инов в день:** {stats['avg_checkins_per_day']:.2f}
 """
     await message.answer(text, parse_mode="Markdown")
+
+@router.message(Command("active"))
+async def cmd_active(message: Message, db: Database):
+    stats = await db.activity.get_statistics()
+    
+    await message.answer("📊 <b>Топ активных пользователей</b>\n"+"\n".join(
+                f"{i}. <b>{stat[0]}</b>: {stat[1]}"
+                for i, stat in enumerate(stats, 1)
+            ))
+    

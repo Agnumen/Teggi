@@ -45,22 +45,22 @@ def get_minute_picker_keyboard(prefix: str):
 # --- Other Keyboards ---
 def get_sensory_tags_keyboard():
     builder = InlineKeyboardBuilder()
-    for text, slug in TAGS.items():
-        builder.button(text=text, callback_data=f"set_tag:{slug}:{text}")
+    for slug, data in TAGS.items():
+        builder.button(text=data[0], callback_data=f"set_tag:{slug}")
     builder.adjust(2)
     return builder.as_markup()
 
 def get_day_checkin_keyboard():
     builder = InlineKeyboardBuilder()
     for text, slug in DAY_TAGS.items():
-        builder.button(text=text, callback_data=f"day_checkin:{slug}:{text}")
+        builder.button(text=text, callback_data=f"day_checkin:{slug}")
     builder.adjust(2)
     return builder.as_markup()
 
 def get_evening_checkin_keyboard():
     builder = InlineKeyboardBuilder()
     for text, slug in FEELINGS.items():
-        builder.button(text=text, callback_data=f"evening_checkin:{slug}:{text}")
+        builder.button(text=text, callback_data=f"evening_checkin:{slug}")
     builder.adjust(3)
     return builder.as_markup()
 

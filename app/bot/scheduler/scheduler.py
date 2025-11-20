@@ -5,11 +5,21 @@ from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from app.bot.keyboards.user import get_evening_checkin_keyboard, get_day_checkin_keyboard
-from app.bot.templates import TIPS
+from app.bot.templates import TAGS
 
 from app.infrastructure.database import Database
 logger = logging.getLogger(__name__)
 
+async def send_many_messages(bot: Bot, text: str, db: Database):
+    user_ids = await db.user.get_all_user_ids()
+
+    for user_id in user_ids:
+        try:
+            await bot.send_message(user_id, text)
+        except Exception as e:  # noqa: F841
+            pass
+
+    
 async def send_morning_overview(bot: Bot, db: Database):
     user_ids = await db.user.get_all_user_ids()
     for user_id in user_ids:
@@ -32,9 +42,9 @@ async def send_reminder(bot: Bot, user_id: int, event_name: str, tag: str, db: D
     
     if not await db.user.get_notifications_status_by_id(user_id):
         return # Пользователь отключил уведомления
-    
-    tip = TIPS.get(tag,"Не забудь подготовиться!")
-    await bot.send_message(user_id, f"🔔 Через 15 минут — **{event_name}** ({tag})\n\n_{tip}_", parse_mode="Markdown")
+    tag_info = TAGS.get(tag, ("notag", "Не забудь подготовиться!"))
+    tip = tag_info[1]
+    await bot.send_message(user_id, f"🔔 Через 15 минут — <b>{event_name}</b> ({tag_info[0]})\n\n<i>{tip}</i>", parse_mode="HTML")
 
 async def setup_user_reminders(user_id: int, bot: Bot, scheduler: AsyncIOScheduler, db: Database, event_date: date = date.today()):
     """Устанавливает все напоминания для пользователя на день."""
@@ -46,9 +56,7 @@ async def setup_user_reminders(user_id: int, bot: Bot, scheduler: AsyncIOSchedul
     events = await db.event.get_user_events(user_id, event_date=event_date)
     for event in events:
         try:
-            hour, minute = map(int, event.start_time.split(':'))
             # Напоминание за 15 минут
-            # reminder_time = datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0) - timedelta(minutes=15)
             reminder_time = datetime.combine(event_date, event.start_time) - timedelta(minutes=15)
             
             # Если время уже прошло, не ставим напоминание на сегодня
@@ -60,7 +68,7 @@ async def setup_user_reminders(user_id: int, bot: Bot, scheduler: AsyncIOSchedul
                 send_reminder,
                 trigger="date",
                 run_date=reminder_time,
-                kwargs={"bot": bot, "user_id": user_id, "event_name": event.name, "tag": event.tag},
+                kwargs={"bot": bot, "user_id": user_id, "event_name": event.name, "tag": event.tag, "db": db},
                 id=job_id
             )
             logger.debug(f"SCHEDULER: Added reminder for {user_id} at {reminder_time.strftime('%H:%M')} for event '{event.name}'")
@@ -76,7 +84,7 @@ async def get_overview_for_user(user_id: int, db: Database, event_date: date = d
     date_str = "сегодня" if event_date == date.today() else event_date.strftime("%d.%m.%Y")
     overview_text = f"Вот твой ритм на {date_str} 👇\n\n"
     for event in events:
-        overview_text += f"<b>{event.start_time.strftime('%H:%M')}–{event.end_time.strftime('%H:%M')}</b> — {event.name} ({event.tag})\n"
+        overview_text += f"<b>{event.start_time.strftime('%H:%M')}–{event.end_time.strftime('%H:%M')}</b> — {event.name} ({TAGS.get(event.tag, ("notag", "Не забудь подготовиться!"))[0]})\n"
     overview_text += "\n\nХорошего дня!"
     try:
         return overview_text

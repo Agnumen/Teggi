@@ -12,7 +12,7 @@ from app.infrastructure.database import Database
 
 from app.bot.keyboards import user as kb
 from app.bot.scheduler.scheduler import setup_user_reminders, get_overview_for_user
-from app.bot.templates import ROUTINE_TEMPLATES
+from app.bot.templates import ROUTINE_TEMPLATES, TAGS
 
 router = Router()
 
@@ -30,18 +30,18 @@ class EventCreation(StatesGroup):
 async def show_routine_management_screen(message: Message | CallbackQuery, user_id: int, db: Database):
     """Отображает центральный экран управления рутиной."""
     events = await db.event.get_user_events(user_id)
-    text = "⚙️ **Центр управления рутиной**\n\n"
+    text = "⚙️ <b>Центр управления рутиной</b>\n\n"
     if not events:
         text += "Твой день пока пуст. Добавь событие или используй готовый шаблон, чтобы начать."
     else:
         text += "Вот твой текущий план на день:\n\n"
         for event in events:
-            text += f"▪️ `{event.start_time.strftime("%H:%M")}-{event.end_time.strftime("%H:%M")}` — {event.name} ({event.tag})\n"
+            text += f"▪️ `{event.start_time.strftime("%H:%M")}-{event.end_time.strftime("%H:%M")}` — {event.name} ({TAGS.get(event.tag, ("notag", "Не забудь подготовитсья!"))[0]})\n"
     
     try:
-        await message.message.edit_text(text, reply_markup=kb.get_routine_management_keyboard(events), parse_mode="Markdown")
+        await message.message.edit_text(text, reply_markup=kb.get_routine_management_keyboard(events), parse_mode="HTML")
     except Exception as e:  # noqa: F841
-        await message.answer(text, reply_markup=kb.get_routine_management_keyboard(events), parse_mode="Markdown")
+        await message.answer(text, reply_markup=kb.get_routine_management_keyboard(events), parse_mode="HTML")
 
 # @router.message(F.text == "⚙️ Управление рутиной")
 # @router.callback_query(F.data=)
@@ -176,7 +176,8 @@ async def process_end_minute(callback: CallbackQuery, state: FSMContext):
 # --- Final step ---
 @router.callback_query(EventCreation.getting_tag, F.data.startswith("set_tag:"))
 async def process_tag_and_finish(callback: CallbackQuery, state: FSMContext, bot: Bot, scheduler: AsyncIOScheduler, db: Database):
-    _, slug, tag_text = callback.data.split(":", 2)
+    _, slug = callback.data.split(":")
+    
     data = await state.get_data()
     event_date = date.fromisoformat(data["event_date"])
     start_time = f"{data['start_hour']}:{data['start_minute']}"
@@ -184,7 +185,7 @@ async def process_tag_and_finish(callback: CallbackQuery, state: FSMContext, bot
 
     await db.event.add_event(
         user_id=callback.from_user.id, name=data['name'],
-        start_time=start_time, end_time=end_time, tag=tag_text, event_date=event_date
+        start_time=start_time, end_time=end_time, tag=slug, event_date=event_date
     )
     
     await state.clear()

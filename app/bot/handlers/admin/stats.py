@@ -1,8 +1,8 @@
-# from os import getenv
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 from app.infrastructure.database import Database
+
 router = Router()
 
 @router.message(Command("stats"))

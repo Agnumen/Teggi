@@ -3,4 +3,6 @@ from app import main
 
 from config import settings
 
-asyncio.run(main(settings))
+if __name__ == "__main__":
+    asyncio.run(main(settings))
+    

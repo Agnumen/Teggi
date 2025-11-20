@@ -1,4 +1,5 @@
 from datetime import date
+from typing import TYPE_CHECKING
 from sqlalchemy import (
     text,
     BigInteger,
@@ -13,6 +14,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 # from app.infrastructure.database.models import Base, User
 from .base import Base
 
+if TYPE_CHECKING:
+    from .user import User
+    
 class Activity(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.user_id'), nullable=False)
     

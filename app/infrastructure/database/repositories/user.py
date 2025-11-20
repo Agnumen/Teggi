@@ -15,12 +15,6 @@ class UserRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    # async def create_user(self, user_id: int) -> User:
-    #     user = User()
-    #     self._session.add(user)
-    #     await self._session.flush()
-    #     return user
-    
     async def get_or_create_user(self, user_id: int) -> User:
         """
         Получает пользователя по ID или создает нового, если он не найден.

@@ -1,17 +1,21 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-def get_main_menu_keyboard() -> InlineKeyboardMarkup:
-    buttons = [
+main_menu_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="Рассылка", callback_data="mailing")],
         [InlineKeyboardButton(text="Шаблоны рутин", callback_data="edit_routines")],
-        [InlineKeyboardButton(text="Советы (TIPS)", callback_data="edit_simple_dict:TIPS")],
         [InlineKeyboardButton(text="Теги (tags)", callback_data="edit_simple_dict:TAGS")],
         [InlineKeyboardButton(text="Теги дня (day_tags)", callback_data="edit_simple_dict:DAY_TAGS")],
         [InlineKeyboardButton(text="Ощущения (feelings)", callback_data="edit_simple_dict:FEELINGS")],
         [InlineKeyboardButton(text="❌ Закрыть", callback_data="close_admin_menu")]
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+    ])
 
+cancel = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main_menu")]
+    ]
+)
 def get_edit_kb(data):
     builder = InlineKeyboardBuilder()
     

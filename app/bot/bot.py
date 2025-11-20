@@ -103,3 +103,4 @@ async def main(config: Settings):
     # Пропускаем накопившиеся апдейты и запускаем polling
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
+    

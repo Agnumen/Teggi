@@ -1,1 +1,0 @@
-from .translator import get_translations

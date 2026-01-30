@@ -4,8 +4,8 @@ from app.bot.templates import ROUTINE_TEMPLATES, TAGS, DAY_TAGS, FEELINGS
 
 from app.infrastructure.database import Database
 
+# main
 def get_main_kb(has_routine: bool=True, key: str=None):
-    """Клавиатура для выбора шаблона."""
     builder = InlineKeyboardBuilder()
     key = 'school_day'
     template = ROUTINE_TEMPLATES.get(key)
@@ -24,7 +24,8 @@ cancel = InlineKeyboardMarkup(
 manage = InlineKeyboardMarkup(
     inline_keyboard=[[InlineKeyboardButton(text="⚙️ Управление рутиной", callback_data="manage_routine")]]
 )
-# --- Time Picker Keyboards ---
+
+# time
 def get_time_picker_keyboard(prefix: str):
     """Создает клавиатуру для выбора часа и минут."""
     builder = InlineKeyboardBuilder()
@@ -42,7 +43,7 @@ def get_minute_picker_keyboard(prefix: str):
     builder.row(InlineKeyboardButton(text="⬅️ Назад к часам", callback_data=f"{prefix}_back_to_hours"))
     return builder.as_markup()
 
-# --- Other Keyboards ---
+# tags
 def get_sensory_tags_keyboard():
     builder = InlineKeyboardBuilder()
     for slug, data in TAGS.items():
@@ -64,6 +65,7 @@ def get_evening_checkin_keyboard():
     builder.adjust(3)
     return builder.as_markup()
 
+# settings
 async def get_settings_keyboard(user_id: int, db: Database):
     nott = await db.user.get_notifications_status_by_id(user_id)
     

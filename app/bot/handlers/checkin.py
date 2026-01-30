@@ -4,7 +4,7 @@ from app.infrastructure.database import Database
 from app.bot.templates import TAGS
 router = Router()
 
-# --- Handlers for Check-ins ---
+# Handlers for Check-ins
 @router.callback_query(F.data.startswith("day_checkin:"))
 async def process_day_checkin(callback: CallbackQuery, db: Database):
     _, slug = callback.data.split(":")

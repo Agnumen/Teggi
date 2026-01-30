@@ -57,7 +57,6 @@ def _load_data():
         with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
             return json.load(f)
 
-    # Данные по умолчанию, если файл не найден
     return DEFAULT
 
 def save_data():

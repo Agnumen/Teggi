@@ -26,9 +26,8 @@ class EventCreation(StatesGroup):
     getting_tag = State()
     getting_tag_name = State()
     
-# --- Главный экран управления рутиной ---
+# Routine center Main menu
 async def show_routine_management_screen(message: Message | CallbackQuery, user_id: int, db: Database):
-    """Отображает центральный экран управления рутиной."""
     events = await db.event.get_user_events(user_id)
     text = "⚙️ <b>Центр управления рутиной</b>\n\n"
     if not events:
@@ -39,18 +38,15 @@ async def show_routine_management_screen(message: Message | CallbackQuery, user_
             text += f"▪️ `{event.start_time.strftime("%H:%M")}-{event.end_time.strftime("%H:%M")}` — {event.name} ({TAGS.get(event.tag, ("notag", "Не забудь подготовитсья!"))[0]})\n"
     
     try:
-        await message.message.edit_text(text, reply_markup=kb.get_routine_management_keyboard(events), parse_mode="HTML")
+        await message.message.edit_text(text, reply_markup=kb.get_routine_management_keyboard(events))
     except Exception as e:  # noqa: F841
-        await message.answer(text, reply_markup=kb.get_routine_management_keyboard(events), parse_mode="HTML")
+        await message.answer(text, reply_markup=kb.get_routine_management_keyboard(events))
 
-# @router.message(F.text == "⚙️ Управление рутиной")
-# @router.callback_query(F.data=)
 @router.callback_query(F.data.in_(["cancel_action","manage_routine"]))
 async def manage_routine_entry(event: CallbackQuery, db: Database):
-    
     await show_routine_management_screen(event, event.from_user.id, db)
 
-# --- Логика Шаблонов ---
+# Templates Logic
 @router.callback_query(F.data == "use_template")
 async def choose_template(callback: CallbackQuery):
     await callback.message.edit_text(
@@ -75,14 +71,14 @@ async def apply_template(callback: CallbackQuery, bot: Bot, scheduler: AsyncIOSc
         await db.event.add_event(user_id, **event)
     
     await setup_user_reminders(user_id, bot, scheduler, db)
-    await db.user.set_onboarding_complete(user_id) # Считаем онбординг пройденным
+    await db.user.set_onboarding_complete(user_id)
     
     routine = await get_overview_for_user(callback.from_user.id, db)
-    await callback.message.edit_text(routine, parse_mode="HTML", reply_markup=kb.manage)
+    await callback.message.edit_text(routine, reply_markup=kb.manage)
     await callback.answer("Шаблон успешно применен!", show_alert=True)
     
 
-# --- Handlers for event creation ---
+# Handlers for event creation
 @router.callback_query(F.data == "add_event")
 async def start_event_creation(callback: CallbackQuery, state: FSMContext):
     await state.set_state(EventCreation.getting_name)
@@ -118,21 +114,21 @@ async def process_date_selection(callback: CallbackQuery, callback_data: SimpleC
 async def process_event_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(EventCreation.getting_start_hour)
-    await message.answer("Отлично! Теперь выбери **час начала** события:", reply_markup=kb.get_time_picker_keyboard("start"), parse_mode="Markdown")
+    await message.answer("Отлично! Теперь выбери <b>час начала</b> события:", reply_markup=kb.get_time_picker_keyboard("start"))
 
 
-# --- Chain of handlers for time picking ---
+# Chain of handlers for time picking
 @router.callback_query(EventCreation.getting_start_hour, F.data.startswith("start_hour:"))
 async def process_start_hour(callback: CallbackQuery, state: FSMContext):
     hour = callback.data.split(":")[1]
     await state.update_data(start_hour=hour)
     await state.set_state(EventCreation.getting_start_minute)
-    await callback.message.edit_text(f"Час начала: {hour}. Теперь выбери **минуты**:", reply_markup=kb.get_minute_picker_keyboard("start"), parse_mode="Markdown")
+    await callback.message.edit_text(f"Час начала: {hour}. Теперь выбери <b>минуты</b>:", reply_markup=kb.get_minute_picker_keyboard("start"))
 
 @router.callback_query(EventCreation.getting_start_minute, F.data.endswith("_back_to_hours"))
 async def process_back_to_start_hour(callback: CallbackQuery, state: FSMContext):
     await state.set_state(EventCreation.getting_start_hour)
-    await callback.message.edit_text("Отлично! Теперь выбери **час начала** события:", reply_markup=kb.get_time_picker_keyboard("start"), parse_mode="Markdown")
+    await callback.message.edit_text("Отлично! Теперь выбери <b>час начала</b> события:", reply_markup=kb.get_time_picker_keyboard("start"))
     
 @router.callback_query(EventCreation.getting_start_minute, F.data.startswith("start_minute:"))
 async def process_start_minute(callback: CallbackQuery, state: FSMContext):
@@ -140,7 +136,7 @@ async def process_start_minute(callback: CallbackQuery, state: FSMContext):
     await state.update_data(start_minute=minute)
     await state.set_state(EventCreation.getting_end_hour)
     data = await state.get_data()
-    await callback.message.edit_text(f"Время начала: {data['start_hour']}:{minute}. Теперь выбери **час окончания**:", reply_markup=kb.get_time_picker_keyboard("end"), parse_mode="Markdown")
+    await callback.message.edit_text(f"Время начала: {data['start_hour']}:{minute}. Теперь выбери <b>час окончания</b>:", reply_markup=kb.get_time_picker_keyboard("end"))
 
 @router.callback_query(EventCreation.getting_end_hour, F.data.startswith("end_hour:"))
 async def process_end_hour(callback: CallbackQuery, state: FSMContext):
@@ -151,13 +147,13 @@ async def process_end_hour(callback: CallbackQuery, state: FSMContext):
         return
     await state.update_data(end_hour=hour)
     await state.set_state(EventCreation.getting_end_minute)
-    await callback.message.edit_text(f"Час окончания: {hour}. Теперь выбери **минуты**:", reply_markup=kb.get_minute_picker_keyboard("end"), parse_mode="Markdown")
+    await callback.message.edit_text(f"Час окончания: {hour}. Теперь выбери <b>минуты</b>:", reply_markup=kb.get_minute_picker_keyboard("end"))
 
 @router.callback_query(EventCreation.getting_end_minute, F.data.endswith("_back_to_hours"))
 async def process_back_to_end_hour(callback: CallbackQuery, state: FSMContext):
     await state.set_state(EventCreation.getting_end_hour)
     data = await state.get_data()
-    await callback.message.edit_text(f"Время начала: {data['start_hour']}:{data['start_minute']}. Теперь выбери **час окончания**:", reply_markup=kb.get_time_picker_keyboard("end"), parse_mode="Markdown")
+    await callback.message.edit_text(f"Время начала: {data['start_hour']}:{data['start_minute']}. Теперь выбери <b>час окончания</b>:", reply_markup=kb.get_time_picker_keyboard("end"))
 
 @router.callback_query(EventCreation.getting_end_minute, F.data.startswith("end_minute:"))
 async def process_end_minute(callback: CallbackQuery, state: FSMContext):
@@ -173,7 +169,7 @@ async def process_end_minute(callback: CallbackQuery, state: FSMContext):
         f"Какая там обычно обстановка?", reply_markup=kb.get_sensory_tags_keyboard()
     )
 
-# --- Final step ---
+# Final step
 @router.callback_query(EventCreation.getting_tag, F.data.startswith("set_tag:"))
 async def process_tag_and_finish(callback: CallbackQuery, state: FSMContext, bot: Bot, scheduler: AsyncIOScheduler, db: Database):
     _, slug = callback.data.split(":")
@@ -194,15 +190,14 @@ async def process_tag_and_finish(callback: CallbackQuery, state: FSMContext, bot
     
     overview = await get_overview_for_user(callback.from_user.id, db, event_date)
     if overview:
-        await callback.message.edit_text(overview, parse_mode="HTML", reply_markup=kb.manage)
+        await callback.message.edit_text(overview, reply_markup=kb.manage)
     else:
-        # Если что-то пошло не так, возвращаемся на главный экран
         await show_routine_management_screen(callback, callback.from_user.id, db)
     
     await callback.answer(f"Событие '{data['name']}' добавлено на {event_date.strftime('%d.%m.%Y')}!")
    
 
-# --- Логика очистки и возвратов ---
+# Clear and back Logic
 @router.callback_query(F.data.startswith("delete_event:"))
 async def process_delete_event(callback: CallbackQuery, bot: Bot, db: Database, scheduler: AsyncIOScheduler):
     event_id = callback.data.split(":")[1]
@@ -227,7 +222,7 @@ async def confirm_clear_routine(callback: CallbackQuery):
 async def process_clear_routine(callback: CallbackQuery, bot: Bot, scheduler: AsyncIOScheduler, db: Database):
     user_id = callback.from_user.id
     await db.event.clear_user_routine(user_id)
-    await setup_user_reminders(user_id, bot, scheduler, db) # Очищаем и напоминания
+    await setup_user_reminders(user_id, bot, scheduler, db)
     await show_routine_management_screen(callback, user_id, db)
     await callback.answer("Рутина очищена.", show_alert=True)
 
@@ -237,4 +232,3 @@ async def back_to_management(callback: CallbackQuery, db: Database):
     await callback.answer()
 
 
-    

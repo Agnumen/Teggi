@@ -1,2 +1,1 @@
-from .filters import LocaleFilter, UserRoleFilter
-from .admin_filter import IsAdmin
+from .admin import IsAdmin

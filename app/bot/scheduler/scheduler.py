@@ -41,14 +41,12 @@ async def send_reminder(bot: Bot, user_id: int, event_name: str, tag: str, db: D
     await db.user.get_or_create_user(user_id)
     
     if not await db.user.get_notifications_status_by_id(user_id):
-        return # Пользователь отключил уведомления
+        return
     tag_info = TAGS.get(tag, ("notag", "Не забудь подготовиться!"))
     tip = tag_info[1]
     await bot.send_message(user_id, f"🔔 Через 15 минут — <b>{event_name}</b> ({tag_info[0]})\n\n<i>{tip}</i>", parse_mode="HTML")
 
 async def setup_user_reminders(user_id: int, bot: Bot, scheduler: AsyncIOScheduler, db: Database, event_date: date = date.today()):
-    """Устанавливает все напоминания для пользователя на день."""
-    # Сначала удаляем старые напоминания, чтобы избежать дублей
     for job in scheduler.get_jobs():
         if job.id.startswith(f"reminder_{user_id}_{event_date.strftime('%Y%m%d')}_"):
             job.remove()
@@ -56,10 +54,8 @@ async def setup_user_reminders(user_id: int, bot: Bot, scheduler: AsyncIOSchedul
     events = await db.event.get_user_events(user_id, event_date=event_date)
     for event in events:
         try:
-            # Напоминание за 15 минут
             reminder_time = datetime.combine(event_date, event.start_time) - timedelta(minutes=15)
             
-            # Если время уже прошло, не ставим напоминание на сегодня
             if reminder_time < datetime.now():
                 continue
             
@@ -77,7 +73,6 @@ async def setup_user_reminders(user_id: int, bot: Bot, scheduler: AsyncIOSchedul
 
 
 async def get_overview_for_user(user_id: int, db: Database, event_date: date = date.today()) -> bool | str:
-    """Формирует и отправляет обзор дня конкретному пользователю."""
     events = await db.event.get_user_events(user_id, event_date)
     if not events:
         return False
@@ -93,7 +88,6 @@ async def get_overview_for_user(user_id: int, db: Database, event_date: date = d
         return False
 
 def setup_scheduler(bot: Bot, session_pool: async_sessionmaker[AsyncSession]):
-    """Настраивает и запускает все запланированные задачи."""
     scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
     
     async def scheduled_morning_overview():

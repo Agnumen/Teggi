@@ -13,13 +13,11 @@ from app.infrastructure.database import Database
 class AdminConfig(StatesGroup):
     main_menu = State()
     
-    # Состояния для простых словарей (TAGS, etc.)
     simple_dict_list = State()
     adding_simple_key = State()
     adding_simple_value = State()
     editing_simple_value = State()
     
-    # Состояния для шаблонов рутин
     routine_list = State()
     routine_details = State()
     editing_routine_name = State()
@@ -27,16 +25,14 @@ class AdminConfig(StatesGroup):
     adding_event = State()
     editing_event = State()
 
-    # Состояния для рассылки
     waiting_for_mailing_message = State()
     
 router = Router()
 
-# --- Хендлеры ---
+# Common commands
 
 @router.message(Command("menu"))
 async def cmd_admin_config(message: Message, state: FSMContext):
-    """Входная точка для редактирования конфигурации."""
     await state.set_state(AdminConfig.main_menu)
     await message.answer(
         "Добро пожаловать в меню администратора. \n\n"
@@ -49,7 +45,8 @@ async def close_menu(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await state.clear()
 
-# --- Логика для простых словарей (TAGS и т.д.) ---
+
+# SimpleDict Logic
 
 @router.callback_query(F.data.startswith("edit_simple_dict:"))
 async def list_simple_dict_items(callback: CallbackQuery, state: FSMContext):
@@ -59,7 +56,7 @@ async def list_simple_dict_items(callback: CallbackQuery, state: FSMContext):
     await state.update_data(current_dict_key=dict_key)
     await state.set_state(AdminConfig.simple_dict_list)
 
-    text = f"Редактирование **{dict_key}**:\n\n"
+    text = f"Редактирование <b>{dict_key}</b>:\n\n"
     try:
         await callback.message.edit_text(text, reply_markup=admin.get_edit_kb(data))
     except Exception as e:  # noqa: F841
@@ -84,12 +81,10 @@ async def process_simple_item_value(message: Message, state: FSMContext):
     new_value = message.text
 
     BOT_CONFIG[dict_key][new_key] = eval(new_value)
-    save_data() # Сохраняем изменения
+    save_data()
 
     await message.answer(f"✅ Запись {new_key}: {new_value} добавлена в {dict_key}.")
     
-    # Возвращаемся к списку
-    # Это эмуляция вызова хендлера, чтобы показать обновленное меню
     callback_mock = type('obj', (object,), {'data': f'edit_simple_dict:{dict_key}', 'message': message})
     await list_simple_dict_items(callback_mock, state)
 

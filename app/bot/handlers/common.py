@@ -1,6 +1,6 @@
 from aiogram import Router, F, Bot
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, CallbackQuery # , ReplyKeyboardRemove
+from aiogram.types import Message, CallbackQuery
 
 from app.bot.keyboards import user as kb
 from app.infrastructure.database import Database
@@ -9,8 +9,9 @@ from app.bot.scheduler.scheduler import get_overview_for_user
 
 router = Router()
 
+# basic commands
 @router.message(CommandStart())
-async def cmd_start(message: Message, bot: Bot, db: Database):
+async def cmd_start(message: Message, db: Database):
     await db.user.get_or_create_user(message.from_user.id)
     sent = await get_overview_for_user(message.from_user.id, db)
     if not sent:
@@ -36,7 +37,6 @@ async def toggle_notifications(callback: CallbackQuery, db: Database):
     await callback.message.edit_reply_markup(reply_markup=keyb)
     await callback.answer(f"Напоминания {'включены' if new_status else 'выключены'}", show_alert=True)
 
-# @router.message(F.text == "🗓 Мой ритм на сегодня")
 @router.callback_query(F.data=="myrythm")
 @router.callback_query(F.data == "back_to_main")
 async def show_today_routine(callback: CallbackQuery, db: Database):

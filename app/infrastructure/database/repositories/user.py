@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.infrastructure.database.models import User, CheckIn
-# from app.core.schemas import UserCreateDTO, UserUpdateDTO
 from app.core.enums import UserRole
 
 

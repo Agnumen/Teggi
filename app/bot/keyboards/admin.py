@@ -1,6 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+# main
 main_menu_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
         [InlineKeyboardButton(text="Рассылка", callback_data="mailing")],
@@ -16,6 +17,8 @@ cancel = InlineKeyboardMarkup(
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main_menu")]
     ]
 )
+
+# edit
 def get_edit_kb(data):
     builder = InlineKeyboardBuilder()
     

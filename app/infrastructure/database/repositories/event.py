@@ -16,11 +16,11 @@ class EventRepository:
     async def add_event(self, user_id: int, name: str, start_time: str, end_time: str, tag: str, event_date: date = date.today()) -> str:
         """Добавляет новое событие для пользователя."""
         
-        # Генерация уникального ID, как в оригинальном коде
-        unique_part = f"{int(time.time() * 1000)}_{random.randint(100, 999)}"
+        unique_part = f"{int(time.time() * 1000)}_{random.randint(100, 999)}" 
+        # Note: we dont need uuid because it will cause problems with callback data. 
+         
         event_id = f"evt_{user_id}_{unique_part}"
 
-        # Конвертация строкового времени в объект time
         start_time_obj = dt.strptime(start_time, '%H:%M').time()
         end_time_obj = dt.strptime(end_time, '%H:%M').time()
 

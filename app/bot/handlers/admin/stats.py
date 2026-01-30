@@ -12,21 +12,21 @@ async def cmd_stats(message: Message, db: Database):
     if "error" in stats:
         return await message.answer(stats["error"])
 
-    text = f"""📊 **Статистика бота "НейроРитм"**
+    text = f"""<b>Статистика бота "Тегги"</b>
 
-- **Всего пользователей:** {stats['total_users']}
-- **Прошли онбординг:** {stats['onboarding_completion_rate']:.2f}%
-- **Retention (активные за 7 дней):** {stats['retention_7_days_count']}
-- **Всего чек-инов:** {stats['total_checkins']}
-- **Среднее кол-во чек-инов в день:** {stats['avg_checkins_per_day']:.2f}
+- <b>Всего пользователей:</b> {stats['total_users']}
+- <b>Прошли онбординг:</b> {stats['onboarding_completion_rate']:.2f}%
+- <b>Retention (активные за 7 дней):</b> {stats['retention_7_days_count']}
+- <b>Всего чек-инов:</b> {stats['total_checkins']}
+- <b>Среднее кол-во чек-инов в день:</b> {stats['avg_checkins_per_day']:.2f}
 """
-    await message.answer(text, parse_mode="Markdown")
+    await message.answer(text)
 
 @router.message(Command("active"))
 async def cmd_active(message: Message, db: Database):
     stats = await db.activity.get_statistics()
     
-    await message.answer("📊 <b>Топ активных пользователей</b>\n"+"\n".join(
+    await message.answer("<b>Топ активных пользователей</b>\n"+"\n".join(
                 f"{i}. <b>{stat[0]}</b>: {stat[1]}"
                 for i, stat in enumerate(stats, 1)
             ))

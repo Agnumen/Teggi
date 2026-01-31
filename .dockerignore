@@ -9,3 +9,6 @@ __pycache__
 .vscode
 Dockerfile
 docker-compose.yml
+pyproject.toml
+uv.lock
+.python-version

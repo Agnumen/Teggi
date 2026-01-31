@@ -13,3 +13,5 @@ wheels/
 .vscode
 bot_config.json
 nohup.out
+uv.lock
+.python-version

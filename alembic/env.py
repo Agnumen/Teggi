@@ -7,7 +7,7 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from config import Settings, settings
+from config import settings
 
 from app.infrastructure.database import models
 from app.infrastructure.database.models.base import Base
@@ -25,11 +25,11 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-settings: Settings = settings
+settings = settings
 target_metadata = Base.metadata
 config.set_main_option(
     'sqlalchemy.url',
-    settings.get_db_url()
+    settings.DATABASE_URL_SYNC
 )
 
 # other values from the config, defined by the needs of env.py,

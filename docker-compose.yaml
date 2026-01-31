@@ -1,0 +1,88 @@
+x-dnsfix: &dnsfix
+  dns_search:
+    - .
+  dns_opt:
+    - ndots:0
+services:
+  postgres:
+    <<: *dnsfix
+    image: postgres:17-alpine
+    container_name: teggi-postgres
+    env_file: .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # ports:
+    #   - "${DB_PORT}:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
+    networks:
+      - app_network
+  
+  redis:
+    <<: *dnsfix
+    image: redis:7.4-alpine
+    container_name: teggi-redis
+    env_file: .env
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    # ports:
+    #   - "${REDIS_PORT}:6379"
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a '$$REDIS_PASSWORD' PING"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
+    networks:
+      - app_network
+  app:
+    <<: *dnsfix
+    build: .
+    container_name: teggi-app
+    env_file: .env
+    environment:
+      - DB_HOST=postgres
+      - REDIS_HOST=redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    name: teggi_app_network
+
+volumes:
+  postgres_data:
+  redis_data:

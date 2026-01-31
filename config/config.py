@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
+from typing import Set
 
 class Settings(BaseSettings):
     # Logging
@@ -8,8 +8,7 @@ class Settings(BaseSettings):
     
     # Bot
     BOT_TOKEN: str
-    BOT_ADMIN_IDS: str
-    BOT_PAYMENT_TOKEN: Optional[str] = None
+    BOT_ADMIN_IDS_STR: str
     
     # Database
     DB_NAME: str
@@ -17,14 +16,6 @@ class Settings(BaseSettings):
     DB_PORT: int
     DB_USER: str
     DB_PASSWORD: str
-    
-    # SQLite db
-    SQLITE_DB: str
-    
-    # PGAdmin
-    PGADMIN_DEFAULT_EMAIL: str
-    PGADMIN_DEFAULT_PASSWORD: str
-    PGADMIN_PORT: int
     
     # Redis    
     REDIS_DB_NUM: int
@@ -38,20 +29,24 @@ class Settings(BaseSettings):
         extra="ignore",
     )
     
-    def get_db_url(self):
+    @property
+    def DATABASE_URL(self):
         return (
             f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@"
             f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
-    def get_db_url_sync(self):
+    
+    @property
+    def DATABASE_URL_SYNC(self):
         return (
             f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASSWORD}@"
             f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
         
-    def get_sqlite_db_url(self):
-        return f"sqlite+aiosqlite:///{self.SQLITE_DB}.db"
-
-    
+    @property
+    def BOT_ADMIN_IDS(self) -> Set[int]:
+        if not self.BOT_ADMIN_IDS_STR.strip():
+            return set()
+        return {int(x.strip()) for x in self.BOT_ADMIN_IDS_STR.split(",") if x.strip()}
     
 settings = Settings()

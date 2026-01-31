@@ -10,7 +10,6 @@ from app.bot.handlers import checkin, common, settings, other
 from app.bot.handlers.admin import stats, edit_settings
 from app.bot.scheduler.scheduler import setup_scheduler
 from app.bot.filters import IsAdmin
-from app.bot.utils import validate
 from app.bot.middlewares import DatabaseMiddleware, ActivityCounterMiddleware
 
 from config import Settings
@@ -44,12 +43,10 @@ async def main(config: Settings):
     dp = Dispatcher(storage=storage)
 
     # Initialize engine and session factory for DB
-    DATABASE_URL = config.get_db_url()
-
-    engine = create_async_engine(url=DATABASE_URL) #, echo=True) # DEV
+    engine = create_async_engine(url=config.DATABASE_URL) #, echo=True) # DEV
     async_session_maker = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
     
-    admin_ids = validate(config.BOT_ADMIN_IDS)
+    admin_ids = config.BOT_ADMIN_IDS
     scheduler = setup_scheduler(bot, async_sessionmaker)
     
     # Add required objects to workflow_data

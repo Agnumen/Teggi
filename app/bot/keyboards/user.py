@@ -27,7 +27,6 @@ manage = InlineKeyboardMarkup(
 
 # time
 def get_time_picker_keyboard(prefix: str):
-    """Создает клавиатуру для выбора часа и минут."""
     builder = InlineKeyboardBuilder()
     for hour in range(7, 23):
         builder.button(text=str(hour), callback_data=f"{prefix}_hour:{hour:02d}")
@@ -85,7 +84,7 @@ def get_routine_management_keyboard(events: list):
         builder.button(text="➕ Добавить еще событие", callback_data="add_event")
         
         for event in events:
-             event_id = event.id
+             event_id = event.event_id
              builder.button(
                  text=f"🗑️ {event.start_time.strftime("%H:%m")} {event.name}",
                  callback_data=f"delete_event:{event_id}"
@@ -103,7 +102,6 @@ def get_routine_management_keyboard(events: list):
     return builder.as_markup()
 
 def get_routine_templates_keyboard():
-    """Клавиатура для выбора шаблона."""
     builder = InlineKeyboardBuilder()
     for key, template in ROUTINE_TEMPLATES.items():
         builder.button(text=template["name"], callback_data=f"apply_template:{key}")

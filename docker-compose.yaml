@@ -9,8 +9,11 @@ services:
     image: postgres:17-alpine
     container_name: teggi-postgres
     env_file: .env
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
     # ports:
     #   - "${DB_PORT}:5432"
     restart: unless-stopped
@@ -43,7 +46,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a '$$REDIS_PASSWORD' PING"]
+      test: ["CMD-SHELL", "redis-cli -a '$REDIS_PASSWORD' PING"]
       interval: 10s
       timeout: 3s
       retries: 3

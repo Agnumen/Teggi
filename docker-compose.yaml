@@ -67,6 +67,7 @@ services:
     environment:
       - DB_HOST=postgres
       - REDIS_HOST=redis
+      - TZ=Europe/Moscow
     depends_on:
       postgres:
         condition: service_healthy

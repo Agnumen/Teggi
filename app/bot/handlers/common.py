@@ -14,7 +14,7 @@ router = Router()
 async def cmd_start(message: Message, db: Database):
     await db.user.get_or_create_user(message.from_user.id)
     sent = await get_overview_for_user(message.from_user.id, db)
-    if not sent:
+    if sent is None:
         keyboard = kb.get_main_kb(False)
     else:
         keyboard = kb.get_main_kb()
@@ -42,7 +42,7 @@ async def toggle_notifications(callback: CallbackQuery, db: Database):
 async def show_today_routine(callback: CallbackQuery, db: Database):
     await db.user.get_or_create_user(callback.from_user.id)
     sent = await get_overview_for_user(callback.from_user.id, db)
-    if not sent:
+    if sent is None:
         await callback.message.edit_text("Твоя рутина пуста.\nНастрой её в меню '⚙️ Управление рутиной'.", reply_markup=kb.get_main_kb(False))
         return
     await callback.message.edit_text(sent, reply_markup=kb.manage)

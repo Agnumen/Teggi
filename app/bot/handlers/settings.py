@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import datetime as dt, date, timedelta
+from zoneinfo import ZoneInfo
 from aiogram import Router, F, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
@@ -7,7 +8,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-
+from app.core.AI import Advisor_AI
 from app.infrastructure.database import Database
 
 from app.bot.keyboards import user as kb
@@ -35,7 +36,7 @@ async def show_routine_management_screen(message: Message | CallbackQuery, user_
     else:
         text += "Вот твой текущий план на день:\n\n"
         for event in events:
-            text += f"▪️ `{event.start_time.strftime("%H:%M")}-{event.end_time.strftime("%H:%M")}` — {event.name} ({TAGS.get(event.tag, ("notag", "Не забудь подготовитсья!"))[0]})\n"
+            text += f'▪️ `{event.start_time.strftime("%H:%M")}-{event.end_time.strftime("%H:%M")}` — {event.name} ({TAGS.get(event.tag, ("notag", "Не забудь подготовиться!"))[0]})\n'
     
     try:
         await message.message.edit_text(text, reply_markup=kb.get_routine_management_keyboard(events))
@@ -55,7 +56,7 @@ async def choose_template(callback: CallbackQuery):
     )
 
 @router.callback_query(F.data.startswith("apply_template:"))
-async def apply_template(callback: CallbackQuery, bot: Bot, scheduler: AsyncIOScheduler, db: Database):
+async def apply_template(callback: CallbackQuery, bot: Bot, scheduler: AsyncIOScheduler, db: Database, advisor: Advisor_AI):
     template_key = callback.data.split(":")[1]
     template = ROUTINE_TEMPLATES.get(template_key)
     user_id = callback.from_user.id
@@ -70,14 +71,40 @@ async def apply_template(callback: CallbackQuery, bot: Bot, scheduler: AsyncIOSc
     for event in template["events"]:
         await db.event.add_event(user_id, **event)
     
-    await setup_user_reminders(user_id, bot, scheduler, db)
+    await setup_user_reminders(user_id, bot, scheduler, db, advisor)
     await db.user.set_onboarding_complete(user_id)
     
     routine = await get_overview_for_user(callback.from_user.id, db)
     await callback.message.edit_text(routine, reply_markup=kb.manage)
     await callback.answer("Шаблон успешно применен!", show_alert=True)
     
-
+# Copy yesterday
+@router.callback_query(F.data == "copy_yesterday")
+async def apply_yesterday(callback: CallbackQuery, bot: Bot, scheduler: AsyncIOScheduler, db: Database, advisor: Advisor_AI):
+    user_id = callback.from_user.id
+    today = dt.now(ZoneInfo("Europe/Moscow")).date()
+    yesterday = today - timedelta(days=1)
+    yesterday_events = await db.event.get_user_events(user_id, event_date=yesterday)
+    
+    if not yesterday_events:
+        await callback.answer("Вчерашний план пуст. Нечего копировать!", show_alert=True)
+        return
+    
+    for event in yesterday_events:
+        await db.event.add_event(
+            user_id=user_id,
+            name=event.name,
+            start_time=event.start_time.strftime('%H:%M'),
+            end_time=event.end_time.strftime('%H:%M'),
+            tag=event.tag,
+            event_date=today
+        )
+    
+    await setup_user_reminders(user_id, bot, scheduler, db, advisor)
+    
+    await show_routine_management_screen(callback, user_id, db)
+    await callback.answer("✅ Вчерашний план успешно скопирован!")
+    
 # Handlers for event creation
 @router.callback_query(F.data == "add_event")
 async def start_event_creation(callback: CallbackQuery, state: FSMContext):
@@ -171,7 +198,7 @@ async def process_end_minute(callback: CallbackQuery, state: FSMContext):
 
 # Final step
 @router.callback_query(EventCreation.getting_tag, F.data.startswith("set_tag:"))
-async def process_tag_and_finish(callback: CallbackQuery, state: FSMContext, bot: Bot, scheduler: AsyncIOScheduler, db: Database):
+async def process_tag_and_finish(callback: CallbackQuery, state: FSMContext, bot: Bot, scheduler: AsyncIOScheduler, db: Database, advisor: Advisor_AI):
     _, slug = callback.data.split(":")
     
     data = await state.get_data()
@@ -185,7 +212,7 @@ async def process_tag_and_finish(callback: CallbackQuery, state: FSMContext, bot
     )
     
     await state.clear()
-    await setup_user_reminders(callback.from_user.id, bot, scheduler, db, event_date)
+    await setup_user_reminders(callback.from_user.id, bot, scheduler, db, advisor, event_date)
     await db.user.set_onboarding_complete(callback.from_user.id)
     
     overview = await get_overview_for_user(callback.from_user.id, db, event_date)
@@ -199,14 +226,14 @@ async def process_tag_and_finish(callback: CallbackQuery, state: FSMContext, bot
 
 # Clear and back Logic
 @router.callback_query(F.data.startswith("delete_event:"))
-async def process_delete_event(callback: CallbackQuery, bot: Bot, db: Database, scheduler: AsyncIOScheduler):
+async def process_delete_event(callback: CallbackQuery, bot: Bot, db: Database, scheduler: AsyncIOScheduler, advisor: Advisor_AI):
     event_id = callback.data.split(":")[1]
     user_id = callback.from_user.id
 
     deleted = await db.event.delete_event(event_id)
     if deleted:
         await callback.answer("Событие удалено", show_alert=True)
-        await setup_user_reminders(user_id, bot, scheduler, db)
+        await setup_user_reminders(user_id, bot, scheduler, db, advisor)
         await show_routine_management_screen(callback, user_id, db)
     else:
         await callback.answer("Не удалось удалить событие.", show_alert=True)
@@ -219,10 +246,10 @@ async def confirm_clear_routine(callback: CallbackQuery):
     )
 
 @router.callback_query(F.data == "clear_routine_confirmed")
-async def process_clear_routine(callback: CallbackQuery, bot: Bot, scheduler: AsyncIOScheduler, db: Database):
+async def process_clear_routine(callback: CallbackQuery, bot: Bot, scheduler: AsyncIOScheduler, db: Database, advisor: Advisor_AI):
     user_id = callback.from_user.id
     await db.event.clear_user_routine(user_id)
-    await setup_user_reminders(user_id, bot, scheduler, db)
+    await setup_user_reminders(user_id, bot, scheduler, db, advisor)
     await show_routine_management_screen(callback, user_id, db)
     await callback.answer("Рутина очищена.", show_alert=True)
 

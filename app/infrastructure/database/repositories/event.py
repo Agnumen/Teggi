@@ -1,9 +1,10 @@
 import time
 import random
 from datetime import datetime as dt, date
+from zoneinfo import ZoneInfo
 from typing import List, Optional
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import Event
@@ -13,9 +14,10 @@ class EventRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
     
-    async def add_event(self, user_id: int, name: str, start_time: str, end_time: str, tag: str, event_date: date = date.today()) -> str:
+    async def add_event(self, user_id: int, name: str, start_time: str, end_time: str, tag: str, event_date: Optional[date]=None) -> str:
         """Добавляет новое событие для пользователя."""
-        
+        if event_date is None:
+            event_date = dt.now(ZoneInfo("Europe/Moscow")).date()
         unique_part = f"{int(time.time() * 1000)}_{random.randint(100, 999)}" 
         # Note: we dont need uuid because it will cause problems with callback data. 
          
@@ -30,7 +32,7 @@ class EventRepository:
             name=name or "Не указано",
             start_time=start_time_obj,
             end_time=end_time_obj,
-            event_date=event_date or dt.now().date(),
+            event_date=event_date,
             tag=tag,
             status="pending"
         )
@@ -38,8 +40,10 @@ class EventRepository:
         await self._session.flush()
         return event.event_id
     
-    async def get_user_events(self, user_id: int, event_date: date=date.today()) -> List[Event]:
+    async def get_user_events(self, user_id: int, event_date: Optional[date]=None) -> List[Event]:
         """Возвращает все события пользователя, отсортированные по времени начала."""
+        if event_date is None:
+            event_date = dt.now(ZoneInfo("Europe/Moscow")).date()
         stmt = (
             select(Event)
             .where(Event.user_id == user_id, Event.event_date == event_date)
@@ -65,3 +69,40 @@ class EventRepository:
         stmt = delete(Event).where(Event.user_id == user_id)
         result = await self._session.execute(stmt)
         return result.rowcount
+    
+    async def get_next_event_by_user_id(self, user_id: int) -> Optional[Event]:
+        now = dt.now(ZoneInfo("Europe/Moscow"))
+        today = now.date()
+        current_time = now.time()
+        
+        stmt = (
+            select(Event)
+            .where(
+                and_(
+                    Event.user_id == user_id,
+                    Event.event_date == today,
+                    Event.start_time > current_time
+                )
+            )
+            .order_by(Event.start_time.asc())
+            .limit(1)
+        )
+        result = await self._session.execute(stmt)
+        event = result.scalar_one_or_none()
+        
+        if event:
+            return event
+        
+        stmt = (
+            select(Event)
+            .where(
+                and_(
+                    Event.user_id == user_id,
+                    Event.event_date > today
+                )
+            )
+            .order_by(Event.event_date.asc(), Event.start_time.asc())
+            .limit(1)
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()

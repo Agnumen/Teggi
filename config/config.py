@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     REDIS_USERNAME: str
     REDIS_PASSWORD: str
     
+    # YandexGPT
+    YANDEX_GPT_API_KEY: str
+    YANDEX_GPT_CATALOG_ID: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

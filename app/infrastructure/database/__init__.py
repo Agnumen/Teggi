@@ -1,3 +1,4 @@
+from typing import Set
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.infrastructure.database.models import Base
@@ -9,8 +10,8 @@ from app.infrastructure.database.repositories import (
 )
 
 class Database:
-    def __init__(self, session: AsyncSession):
-        self.user = UserRepository(session=session)
+    def __init__(self, session: AsyncSession, admin_ids: Set[int]):
+        self.user = UserRepository(session=session, admin_ids=admin_ids)
         self.activity = ActivityRepository(session=session)
         self.event = EventRepository(session=session)
         self.checkin = CheckInRepository(session=session)

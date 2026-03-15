@@ -1,6 +1,5 @@
 # pull official base image
-FROM python:3.13-slim
-
+FROM python:3.12-slim
 
 # set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -11,7 +10,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-    
 # copy requirements file first for better caching
 COPY requirements.txt .
 

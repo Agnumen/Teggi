@@ -154,7 +154,7 @@ async def back_to_main(callback: CallbackQuery, state: FSMContext):
 
     
 @router.message(AdminConfig.waiting_for_mailing_message)
-async def process_message(message: Message, bot: Bot,  state: FSMContext, db: Database):
+async def wait_for_message(message: Message, bot: Bot,  state: FSMContext, db: Database):
     await send_many_messages(bot, message.text, db)
     await state.clear()
     

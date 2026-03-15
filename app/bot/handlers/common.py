@@ -1,27 +1,43 @@
+from typing import Set
 from aiogram import Router, F, Bot
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery
 
 from app.bot.keyboards import user as kb
 from app.infrastructure.database import Database
-
+from app.core.enums import UserRole
 from app.bot.scheduler.scheduler import get_overview_for_user
 
 router = Router()
 
 # basic commands
 @router.message(CommandStart())
-async def cmd_start(message: Message, db: Database):
-    await db.user.get_or_create_user(message.from_user.id)
+async def cmd_start(message: Message, db: Database, admin_ids: Set[int]):
+    user = await db.user.get_or_create_user(message.from_user.id)
+    
     sent = await get_overview_for_user(message.from_user.id, db)
     if sent is None:
         keyboard = kb.get_main_kb(False)
     else:
         keyboard = kb.get_main_kb()
+        
     await message.answer(
         "Привет! Я — Тегги. Помогу тебе построить день спокойнее, учитывая обстановку вокруг.\n\nДля начала работы можешь воспользоваться готовым шаблоном (рекомендуется).",
         reply_markup=keyboard
     )
+    
+    if user.role == UserRole.ADMIN:
+        await message.answer(
+            """👑 <b>Вы авторизованы как Администратор.</b>
+            
+            Вам доступны скрытые команды:
+            ⚙️ /menu — Настройки бота (шаблоны) и запуск ручной рассылки
+            📊 /stats — Общая статистика бота (юзеры, чек-ины, retention)
+            🏆 /active — Топ самых активных пользователей
+            🚀 /demo — Принудительный запуск всех чекинов
+            🤖 /demo_event — Принудительный запуск следующего события
+            """
+        )
 
 @router.message(Command("settings"))
 async def cmd_settings(message: Message, db: Database):

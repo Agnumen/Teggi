@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, timezone
-from typing import Any, List, Optional, Dict
+from datetime import datetime as dt, timedelta, timezone
+from typing import Any, List, Dict, Set, Optional
 
 from sqlalchemy import select, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,8 +11,9 @@ from app.core.enums import UserRole
 
 
 class UserRepository:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, admin_ids: Set[int]):
         self._session = session
+        self.admin_ids = admin_ids
 
     async def get_or_create_user(self, user_id: int) -> User:
         """
@@ -20,17 +21,30 @@ class UserRepository:
         Обновляет время последней активности.
         """
         stmt = (
-            pg_insert(User)
-            .values(user_id=user_id, last_active=func.now())
-            .on_conflict_do_update(
-                index_elements=[User.user_id],
-                set_={"last_active": func.now()}
-            )
-            .returning(User)
+            select(User)
+            .where(User.user_id == user_id)
         )
         result = await self._session.execute(stmt)
-        return result.scalar_one()
-
+        user = result.scalar_one_or_none()
+        
+        if user is not None:
+            user.last_active = func.now()
+            await self._session.flush()
+            return user
+            
+        role = UserRole.ADMIN if user_id in self.admin_ids else UserRole.USER
+        
+        new_user = User(
+            user_id=user_id,
+            role=role,
+            last_active=func.now()
+        )
+        
+        self._session.add(new_user)
+        await self._session.flush()
+        await self._session.refresh(new_user)
+        return new_user
+        
     async def delete_user(self, user_id: int):
         user = await self.get_by_id(user_id=user_id)
         if user:
@@ -92,7 +106,7 @@ class UserRepository:
         onboarded_users_stmt = select(func.count(User.id)).where(User.onboarding_completed)
         onboarded_users = (await self._session.execute(onboarded_users_stmt)).scalar_one()
 
-        seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+        seven_days_ago = dt.now(timezone.utc) - timedelta(days=7)
         retention_stmt = select(func.count(User.id)).where(User.last_active > seven_days_ago)
         retention_7_days = (await self._session.execute(retention_stmt)).scalar_one()
 
@@ -108,7 +122,7 @@ class UserRepository:
         else:
             first_user_date = first_user_time.date()
         
-        current_date = datetime.now(timezone.utc).date()
+        current_date = dt.now(timezone.utc).date()
         
         days_since_first_user = (current_date - first_user_date).days
         

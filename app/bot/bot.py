@@ -7,10 +7,12 @@ from aiogram.fsm.storage.redis import RedisStorage
 from redis.asyncio import Redis
 
 from app.bot.handlers import checkin, common, settings, other
-from app.bot.handlers.admin import stats, edit_settings
+from app.bot.handlers.admin import commands, edit_settings
 from app.bot.scheduler.scheduler import setup_scheduler
 from app.bot.filters import IsAdmin
 from app.bot.middlewares import DatabaseMiddleware, ActivityCounterMiddleware
+
+from app.core.AI import Advisor_AI
 
 from config import Settings
 
@@ -47,6 +49,12 @@ async def main(config: Settings):
     async_session_maker = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
     
     admin_ids = config.BOT_ADMIN_IDS
+    
+    advisor = Advisor_AI(
+        catalog_id=config.YANDEX_GPT_CATALOG_ID,
+        api_key=config.YANDEX_GPT_API_KEY
+    )
+    
     scheduler = setup_scheduler(bot, async_sessionmaker)
     
     # Add required objects to workflow_data
@@ -54,6 +62,7 @@ async def main(config: Settings):
         "bot": bot,
         "scheduler": scheduler,
         "admin_ids": admin_ids,
+        "advisor": advisor,
     })
     
     scheduler.start()
@@ -62,7 +71,7 @@ async def main(config: Settings):
     logger.info("Including routers...")
     dp.include_routers(
         common.router,
-        stats.router,
+        commands.router,
         edit_settings.router,
         settings.router,
         checkin.router,
@@ -71,14 +80,14 @@ async def main(config: Settings):
     
     # Filters
     logger.info("Including filters...")
-    stats.router.message.filter(IsAdmin(admin_ids))
-    stats.router.callback_query.filter(IsAdmin(admin_ids))
+    commands.router.message.filter(IsAdmin(admin_ids))
+    commands.router.callback_query.filter(IsAdmin(admin_ids))
     edit_settings.router.message.filter(IsAdmin(admin_ids))
     edit_settings.router.callback_query.filter(IsAdmin(admin_ids))
     
     # Middlewares
     logger.info("Including middlewares...")
-    dp.update.middleware(DatabaseMiddleware(async_session_maker))
+    dp.update.middleware(DatabaseMiddleware(async_session_maker, admin_ids))
     dp.update.middleware(ActivityCounterMiddleware())
     
     await bot.delete_webhook(drop_pending_updates=True)

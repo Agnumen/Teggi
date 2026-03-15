@@ -86,11 +86,12 @@ def get_routine_management_keyboard(events: list):
         for event in events:
              event_id = event.event_id
              builder.button(
-                 text=f"🗑️ {event.start_time.strftime("%H:%m")} {event.name}",
+                 text=f"🗑️ {event.start_time.strftime("%H:%M")} {event.name}",
                  callback_data=f"delete_event:{event_id}"
              )
     else:
         builder.button(text="➕ Создать первое событие", callback_data="add_event")
+        builder.button(text="🔁 Повторить вчерашний план", callback_data="copy_yesterday")
         
     builder.button(text="➕ Добавить событие на другую дату", callback_data="add_event_for_date")
     builder.button(text="✨ Использовать шаблон", callback_data="use_template")

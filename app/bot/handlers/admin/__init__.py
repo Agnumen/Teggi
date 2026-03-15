@@ -1,1 +1,1 @@
-from . import edit_settings, stats
+from . import commands, edit_settings

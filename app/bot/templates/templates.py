@@ -10,7 +10,7 @@ DEFAULT = {
                 "name": "🎒 Школьный день",
                 "events": [
                     {"name": "Подъём и сборы", "start_time": "07:00", "end_time": "07:45", "tag": "quiet"},
-                    {"name": "Дорога в школу", "start_time": "08:00", "end_time": "08:30", "tag": "active"},
+                    {"name": "Дорога в школу", "start_time": "08:00", "end_time": "08:30", "tag": "notag"},
                     {"name": "Уроки в школе", "start_time": "09:00", "end_time": "15:00", "tag": "loud"},
                     {"name": "Обед", "start_time": "12:00", "end_time": "12:30", "tag": "crowd"},
                     {"name": "Дорога домой", "start_time": "15:00", "end_time": "15:30", "tag": "dim"},
@@ -27,8 +27,7 @@ DEFAULT = {
                     {"name": "Ужин и отдых", "start_time": "19:30", "end_time": "21:00", "tag": "calm"},
                 ]
             }
-        },
-        
+        },        
         "TAGS": {
             "notag": ("⚖️ нейтрально", "Не забудь подготовиться!"),
             "quiet": ("🤫 тихо", "Обрати внимание на своё состояние. Тишина помогает сосредоточиться."),

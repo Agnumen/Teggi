@@ -73,7 +73,7 @@ async def force_next_event(message: Message, bot: Bot, db: Database, advisor: Ad
     except Exception as e:
         await message.answer(f"Ошибка отправки {str(e)}")
 
-@router.message(Command("/collected_data"))
+@router.message(Command("collected_data"))
 async def show_collected_data(message: Message):
     stats_text =(
         """📊 <b>Пилотное исследование (декабрь 2025)</b>
@@ -94,7 +94,7 @@ async def show_collected_data(message: Message):
     )
     await message.answer(stats_text)
 
-@router.message(Command("/methodology"))
+@router.message(Command("methodology"))
 async def show_methodology(message: Message):
     methodology = (
         """📋 <b>Методика сбора данных (Пилот)</b>

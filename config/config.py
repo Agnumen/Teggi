@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     # Bot
     BOT_TOKEN: str
     BOT_ADMIN_IDS_STR: str
+    PROXY_URL: str
     
     # Database
     DB_NAME: str

@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.fsm.storage.redis import RedisStorage
 from redis.asyncio import Redis
 
@@ -37,10 +38,13 @@ async def main(config: Settings):
     )
     storage = RedisStorage(redis=redis)
     
+    session = AiohttpSession(proxy=config.PROXY_URL)
+    
     # Initialize bot&dispatcher
     bot = Bot(
         token=config.BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode="html")
+        default=DefaultBotProperties(parse_mode="html"),
+        session=session
     )
     dp = Dispatcher(storage=storage)
 
@@ -91,5 +95,6 @@ async def main(config: Settings):
     dp.update.middleware(ActivityCounterMiddleware())
     
     await bot.delete_webhook(drop_pending_updates=True)
+    
     await dp.start_polling(bot)
     

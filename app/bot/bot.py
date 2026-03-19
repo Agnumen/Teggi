@@ -37,8 +37,7 @@ async def main(config: Settings):
         password=config.REDIS_PASSWORD
     )
     storage = RedisStorage(redis=redis)
-    
-    session = AiohttpSession(proxy=config.PROXY_URL)
+    session = AiohttpSession(proxy=config.PROXY_URL) if config.PROXY_URL else AiohttpSession()
     
     # Initialize bot&dispatcher
     bot = Bot(
@@ -46,6 +45,7 @@ async def main(config: Settings):
         default=DefaultBotProperties(parse_mode="html"),
         session=session
     )
+            
     dp = Dispatcher(storage=storage)
 
     # Initialize engine and session factory for DB

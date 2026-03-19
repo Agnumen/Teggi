@@ -59,6 +59,31 @@ services:
         compress: "true"
     networks:
       - app_network
+
+  xray:
+    <<: *dnsfix
+    image: ghcr.io/xtls/xray-core:latest
+    container_name: teggi-xray
+    restart: unless-stopped
+    volumes:
+      - ./xray/config.json:/etc/xray/config.json:ro
+    command: ["run", "-config", "/etc/xray/config.json"]
+    healthcheck:
+      disable: true
+    #   test: ["CMD", "pgrep", "-f", "xray"]
+    #   interval: 30s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
+    networks:
+      - app_network
+
   app:
     <<: *dnsfix
     build: .
@@ -68,11 +93,14 @@ services:
       - DB_HOST=postgres
       - REDIS_HOST=redis
       - TZ=Europe/Moscow
+      - PROXY_URL=socks5://xray:1080
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      xray:
+        condition: service_started
     restart: unless-stopped
     logging:
       driver: "json-file"

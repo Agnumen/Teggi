@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Set
+from typing import Set, Optional
 
 class Settings(BaseSettings):
     # Logging
@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     # Bot
     BOT_TOKEN: str
     BOT_ADMIN_IDS_STR: str
-    PROXY_URL: str
+    PROXY_URL: Optional[str] = None
     
     # Database
     DB_NAME: str

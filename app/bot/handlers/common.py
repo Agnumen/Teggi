@@ -1,18 +1,19 @@
-from typing import Set
 from aiogram import Router, F, Bot
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery
 
 from app.bot.keyboards import user as kb
+from app.bot.scheduler.scheduler import get_overview_for_user, send_reminder
+from app.bot.keyboards.user import get_day_checkin_keyboard, get_evening_checkin_keyboard
+from app.core.AI import Advisor_AI
+
 from app.infrastructure.database import Database
-from app.core.enums import UserRole
-from app.bot.scheduler.scheduler import get_overview_for_user
 
 router = Router()
 
 # basic commands
 @router.message(CommandStart())
-async def cmd_start(message: Message, db: Database, admin_ids: Set[int]):
+async def cmd_start(message: Message, db: Database):
     user = await db.user.get_or_create_user(message.from_user.id)
     
     sent = await get_overview_for_user(message.from_user.id, db)
@@ -26,22 +27,6 @@ async def cmd_start(message: Message, db: Database, admin_ids: Set[int]):
         reply_markup=keyboard
     )
     
-    if user.role == UserRole.ADMIN:
-        await message.answer(
-            """👑 <b>Вы авторизованы как Администратор.</b>
-            
-            Вам доступны скрытые команды:
-            ⚙️ /menu — Настройки бота (шаблоны) и запуск ручной рассылки
-            📊 /stats — Общая статистика бота (юзеры, чек-ины, retention)
-            🫂 /collected_data - Данные первого опроса
-            🫂 /methodology - вопросы опроса
-            🏆 /active — Топ самых активных пользователей
-            🚀 /demo — Принудительный запуск всех чекинов
-            🤖 /demo_event — Принудительный запуск следующего события
-            
-            """
-        )
-
 @router.message(Command("settings"))
 async def cmd_settings(message: Message, db: Database):
     await db.user.get_or_create_user(message.from_user.id)
@@ -65,3 +50,30 @@ async def show_today_routine(callback: CallbackQuery, db: Database):
         await callback.message.edit_text("Твоя рутина пуста.\nНастрой её в меню '⚙️ Управление рутиной'.", reply_markup=kb.get_main_kb(False))
         return
     await callback.message.edit_text(sent, reply_markup=kb.manage)
+
+@router.message(Command("demo"))
+async def force_next_event(message: Message, bot: Bot, db: Database, advisor: Advisor_AI):
+    user_id = message.from_user.id
+    next_event = await db.event.get_next_event_by_user_id(user_id)
+    
+    if next_event is None:
+        await message.answer(
+            "⚠️ У Вас нет запланированных событий.\n"
+            "Сначала добавьте событие."
+        )
+        return
+    try:
+        await send_reminder(bot, user_id, next_event.name, next_event.tag, db, advisor)
+
+        await message.answer("✅ Демо-событие отправлено")
+    except Exception as e:
+        await message.answer(f"Ошибка отправки!")
+        
+@router.message(Command("demo_checkin"))
+async def cmd_demo(message: Message):
+    await message.answer("🚀 Запускаю демонстрацию всех рассылок...")
+    
+    await message.answer("Как ты сейчас? Какая обстановка вокруг?", reply_markup=get_day_checkin_keyboard())
+    
+    await message.answer("Как прошёл день в целом?", reply_markup=get_evening_checkin_keyboard())
+    

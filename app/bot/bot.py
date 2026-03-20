@@ -12,6 +12,7 @@ from app.bot.handlers.admin import commands, edit_settings
 from app.bot.scheduler.scheduler import setup_scheduler
 from app.bot.filters import IsAdmin
 from app.bot.middlewares import DatabaseMiddleware, ActivityCounterMiddleware
+from app.bot.utils import setup_bot_commands
 
 from app.core.AI import Advisor_AI
 
@@ -45,14 +46,18 @@ async def main(config: Settings):
         default=DefaultBotProperties(parse_mode="html"),
         session=session
     )
-            
+
+    
     dp = Dispatcher(storage=storage)
+    
+    admin_ids = config.BOT_ADMIN_IDS
+    
+    await setup_bot_commands(bot, admin_ids)
 
     # Initialize engine and session factory for DB
     engine = create_async_engine(url=config.DATABASE_URL) #, echo=True) # DEV
     async_session_maker = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
     
-    admin_ids = config.BOT_ADMIN_IDS
     
     advisor = Advisor_AI(
         catalog_id=config.YANDEX_GPT_CATALOG_ID,

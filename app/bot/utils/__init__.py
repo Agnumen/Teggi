@@ -1,0 +1,1 @@
+from .setup_commands import setup_bot_commands

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
-from aiogram.client.session.aiohttp import AiohttpSession
+# from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.fsm.storage.redis import RedisStorage
 from redis.asyncio import Redis
 
@@ -38,13 +38,13 @@ async def main(config: Settings):
         password=config.REDIS_PASSWORD
     )
     storage = RedisStorage(redis=redis)
-    session = AiohttpSession(proxy=config.PROXY_URL) if config.PROXY_URL else AiohttpSession()
+    # session = AiohttpSession(proxy=config.PROXY_URL) if config.PROXY_URL else AiohttpSession()
     
     # Initialize bot&dispatcher
     bot = Bot(
         token=config.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode="html"),
-        session=session
+        # session=session
     )
 
     
@@ -64,7 +64,7 @@ async def main(config: Settings):
         api_key=config.YANDEX_GPT_API_KEY
     )
     
-    scheduler = setup_scheduler(bot, async_sessionmaker)
+    scheduler = setup_scheduler(bot, async_session_maker, admin_ids)
     
     # Add required objects to workflow_data
     dp.workflow_data.update({

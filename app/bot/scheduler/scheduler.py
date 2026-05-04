@@ -1,4 +1,5 @@
 import logging
+from typing import Set
 from datetime import datetime as dt, timedelta, date
 from zoneinfo import ZoneInfo
 
@@ -10,17 +11,8 @@ from app.core.AI import Advisor_AI
 from app.bot.templates import TAGS
 
 from app.infrastructure.database import Database
+
 logger = logging.getLogger(__name__)
-
-async def send_many_messages(bot: Bot, text: str, db: Database):
-    user_ids = await db.user.get_all_user_ids()
-
-    for user_id in user_ids:
-        try:
-            await bot.send_message(user_id, text)
-        except Exception as e:  # noqa: F841
-            pass
-
     
 async def send_morning_overview(bot: Bot, db: Database):
     user_ids = await db.user.get_all_user_ids()
@@ -101,23 +93,37 @@ async def get_overview_for_user(user_id: int, db: Database, event_date: date = N
         logger.error(f"Failed to send overview to {user_id}: {e}")
         return False
 
-def setup_scheduler(bot: Bot, session_pool: async_sessionmaker[AsyncSession]):
+def setup_scheduler(bot: Bot, session_pool: async_sessionmaker[AsyncSession], admin_ids: Set[int]):
     scheduler = AsyncIOScheduler(timezone=ZoneInfo("Europe/Moscow"))
     
     async def scheduled_morning_overview():
         async with session_pool() as session:
-            db = Database(session=session)
-            await send_morning_overview(bot, db)
+            try:
+                db = Database(session=session, admin_ids=admin_ids)
+                await send_morning_overview(bot, db)
+            except Exception as e:
+                logger.error(f"Error in scheduled_morning_overview: {e}")
+                raise
     
     async def scheduled_day_checkin():
         async with session_pool() as session:
-            db = Database(session=session)
-            await send_day_checkin(bot, db)
-    
+            try:
+                db = Database(session=session, admin_ids=admin_ids)
+                await send_day_checkin(bot, db)
+            except Exception as e:
+                logger.error(f"Error in scheduled_day_checkin: {e}")
+                raise
+        
+            
     async def scheduled_evening_checkin():
         async with session_pool() as session:
-            db = Database(session=session)
-            await send_evening_checkin(bot, db)
+            try:
+                db = Database(session=session, admin_ids=admin_ids)
+                await send_evening_checkin(bot, db)
+            except Exception as e:
+                logger.error(f"Error in scheduled_evening_checkin: {e}")
+                raise
+    
     
     scheduler.add_job(scheduled_morning_overview, "cron", hour=7, minute=30, timezone=ZoneInfo("Europe/Moscow"), misfire_grace_time=None)
     scheduler.add_job(scheduled_day_checkin, "cron", hour=13, minute=0, timezone=ZoneInfo("Europe/Moscow"), misfire_grace_time=None)

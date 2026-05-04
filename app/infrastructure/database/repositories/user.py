@@ -76,6 +76,31 @@ class UserRepository:
         
         await self.update_user_settings(user_id, User.notifications_enabled, new)
     
+    async def set_inactive(self, user_id: int, reason: str = "manual") -> bool:
+        """
+        Помечает пользователя как неактивного:
+        - Отключает уведомления (notifications_enabled = False)
+        - Обновляет last_active на старую дату (для корректной фильтрации в get_active_user_ids)
+        - (Опционально) можно добавить логирование причины в отдельную таблицу
+        
+        :param user_id: Telegram ID пользователя
+        :param reason: причина деактивации (для логов/аналитики)
+        :return: True если пользователь найден и обновлён, False если не найден
+        """
+        from datetime import datetime as dt, timezone
+        
+        stmt = select(User).where(User.user_id == user_id)
+        result = await self._session.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            return False
+        
+        user.notifications_enabled = False
+        user.last_active = dt(2020, 1, 1, tzinfo=timezone.utc)
+        
+        await self._session.flush()        
+        return True
     
     async def get_user_role(self, user_id: int) -> Optional[UserRole]:
         stmt = (
@@ -94,7 +119,20 @@ class UserRepository:
         stmt = select(User.user_id)
         result = await self._session.execute(stmt)
         return result.scalars().all()
-
+    
+    async def get_active_user_ids(self, days: int = 14) -> List[int]:
+        """
+        Возвращает список user_id пользователей, которые были активны 
+        за последние `days` дней (по умолчанию 14 дней).
+        
+        :param days: период активности в днях (по умолчанию 14)
+        :return: список Telegram user_id активных пользователей
+        """
+        threshold = dt.now(timezone.utc) - timedelta(days=days)
+        stmt = select(User.user_id).where(User.last_active >= threshold)
+        result = await self._session.execute(stmt)
+        return result.scalars().all()
+    
     async def get_statistics(self) -> Dict[str, Any]:
         """Собирает и возвращает статистику по базе данных."""
         total_users_stmt = select(func.count(User.id))

@@ -4,9 +4,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.filters import Command, StateFilter
 
-from app.bot.scheduler.scheduler import send_many_messages
+
 from app.bot.keyboards import admin
 from app.bot.templates import save_data, BOT_CONFIG
+from app.bot.utils import get_content_info, send_many_messages
 from app.infrastructure.database import Database
 
 # FSM States
@@ -154,10 +155,29 @@ async def back_to_main(callback: CallbackQuery, state: FSMContext):
 
     
 @router.message(AdminConfig.waiting_for_mailing_message)
-async def wait_for_message(message: Message, bot: Bot,  state: FSMContext, db: Database):
-    await send_many_messages(bot, message.text, db)
-    await state.clear()
-    
+async def broadcast_from_message(
+    message: Message,
+    bot: Bot,
+    state: FSMContext,
+    db: Database,
+):
+    """Рассылает контент из сообщения (текст, фото, документ и т.д.) активным пользователям."""
+    info = get_content_info(message)
+    try:
+        await send_many_messages(
+            bot=bot,
+            db=db,
+            content_type=info["content_type"],
+            content_text=info["content_text"],
+            file_id=info["file_id"],
+            delay=0.05,
+            mark_blocked=True,
+        )
+        await message.answer("✅ Рассылка завершена.")
+    except Exception as e:
+        await message.answer(f"Ошибка при рассылке: {e}")
+        
+    await state.set_state(AdminConfig.main_menu)
     await message.answer(
         "Главное меню администратора.",
         reply_markup=admin.main_menu_keyboard

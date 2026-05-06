@@ -125,8 +125,8 @@ def setup_scheduler(bot: Bot, session_pool: async_sessionmaker[AsyncSession], ad
                 raise
     
     
-    scheduler.add_job(scheduled_morning_overview, "cron", hour=7, minute=30, timezone=ZoneInfo("Europe/Moscow"), misfire_grace_time=None)
-    scheduler.add_job(scheduled_day_checkin, "cron", hour=13, minute=0, timezone=ZoneInfo("Europe/Moscow"), misfire_grace_time=None)
-    scheduler.add_job(scheduled_evening_checkin, "cron", hour=20, minute=30, timezone=ZoneInfo("Europe/Moscow"), misfire_grace_time=None)
+    # scheduler.add_job(scheduled_morning_overview, "cron", hour=7, minute=30, timezone=ZoneInfo("Europe/Moscow"), misfire_grace_time=None)
+    # scheduler.add_job(scheduled_day_checkin, "cron", hour=13, minute=0, timezone=ZoneInfo("Europe/Moscow"), misfire_grace_time=None)
+    # scheduler.add_job(scheduled_evening_checkin, "cron", hour=20, minute=30, timezone=ZoneInfo("Europe/Moscow"), misfire_grace_time=None)
     
     return scheduler

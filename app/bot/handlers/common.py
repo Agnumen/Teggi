@@ -1,6 +1,7 @@
 from aiogram import Router, F, Bot
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
 
 from app.bot.keyboards import user as kb
 from app.bot.scheduler.scheduler import get_overview_for_user, send_reminder
@@ -13,7 +14,9 @@ router = Router()
 
 # basic commands
 @router.message(CommandStart())
-async def cmd_start(message: Message, db: Database):
+async def cmd_start(message: Message, db: Database, state: FSMContext):
+    if state is not None:
+        await state.clear()
     user = await db.user.get_or_create_user(message.from_user.id)
     
     sent = await get_overview_for_user(message.from_user.id, db)
@@ -28,7 +31,9 @@ async def cmd_start(message: Message, db: Database):
     )
     
 @router.message(Command("settings"))
-async def cmd_settings(message: Message, db: Database):
+async def cmd_settings(message: Message, db: Database, state: FSMContext):
+    if state is not None:
+        await state.clear()
     await db.user.get_or_create_user(message.from_user.id)
     keyb = await kb.get_settings_keyboard(message.from_user.id, db)
     await message.answer("Настройки уведомлений:", reply_markup=keyb)
